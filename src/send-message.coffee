@@ -5,7 +5,7 @@ class SendMessage
     message =
       auth: job.metadata.auth
       message: job.rawData
-    @cache.lpush 'meshblu-messages', message, (error, result) =>
+    @cache.lpush 'meshblu-messages', JSON.stringify(message), (error, result) =>
       return callback error if error?
       return callback null, metadata: code: 404 unless result?
 

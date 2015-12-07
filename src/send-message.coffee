@@ -2,7 +2,10 @@ class SendMessage
   constructor: ({@cache}) ->
 
   do: (job, callback) =>
-    @cache.lpush 'meshblu-messages', job.rawData, (error, result) =>
+    message =
+      auth: job.metadata.auth
+      message: job.rawData
+    @cache.lpush 'meshblu-messages', message, (error, result) =>
       return callback error if error?
       return callback null, metadata: code: 404 unless result?
 

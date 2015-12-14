@@ -1,6 +1,6 @@
 {
   "name": "meshblu-core-task-send-message",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Place a Meshblu Message in the message queue",
   "main": "index.js",
   "directories": {

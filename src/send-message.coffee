@@ -1,3 +1,5 @@
+_ = require 'lodash'
+
 class SendMessage
   constructor: ({@cache,@meshbluConfig,@forwardEventDevices}) ->
 
@@ -18,6 +20,7 @@ class SendMessage
         return callback null, metadata: {code: 204}
 
   logEvent: ({data}, callback) =>
+    return callback() if _.isEmpty @forwardEventDevices
     {uuid, token} = @meshbluConfig
 
     message =

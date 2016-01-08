@@ -1,18 +1,26 @@
+_ = require 'lodash'
 SendMessage = require '../'
 redis  = require 'fakeredis'
 uuid   = require 'uuid'
+JobManager = require 'meshblu-core-job-manager'
 
 describe 'SendMessage', ->
   beforeEach ->
     @redisKey = uuid.v1()
+    @pubSubKey = uuid.v1()
+    sendMessageJobManager = new JobManager
+      client: _.bindAll redis.createClient @pubSubKey
+      timeoutSeconds: 1
+    @jobManager = new JobManager
+      client: _.bindAll redis.createClient @pubSubKey
+      timeoutSeconds: 1
     @sut = new SendMessage
-      cache: redis.createClient(@redisKey)
+      cache: _.bindAll redis.createClient @redisKey
       meshbluConfig: {uuid: 'meshblu-uuid', token: 'meshblu-token'}
-      forwardEventDevices: ['forwarder-uuid']
-    @cache = redis.createClient @redisKey
+      jobManager: sendMessageJobManager
 
   describe '->do', ->
-    describe 'When the message worker responds with a result', ->
+    describe 'when devices is missing', ->
       beforeEach (done) ->
         request =
           metadata:
@@ -20,37 +28,156 @@ describe 'SendMessage', ->
             auth:
               uuid:  'sender-uuid'
               token: 'sender-token'
-          rawData: JSON.stringify(cats: true)
+          rawData: JSON.stringify({})
 
         @sut.do request, (error, @response) => done error
 
-      it 'should put the message in the queue', (done) ->
-        @cache.lindex 'meshblu-messages', 1, (error, message) =>
-          return done error if error?
-          expect(message).to.deep.equal JSON.stringify({
+      it 'should respond with a 422', ->
+        expect(@response.metadata.code).to.equal 422
+
+    describe 'when rawData is null', ->
+      beforeEach (done) ->
+        request =
+          metadata:
+            responseId: 'response-uuid'
             auth:
               uuid:  'sender-uuid'
               token: 'sender-token'
-            message:
-              cats: true
-          })
-          done()
+
+        @sut.do request, (error, @response) => done error
+
+      it 'should respond with a 422', ->
+        expect(@response.metadata.code).to.equal 422
+
+    describe 'when devices is a *', ->
+      beforeEach (done) ->
+        request =
+          metadata:
+            responseId: 'response-uuid'
+            auth:
+              uuid:  'sender-uuid'
+              token: 'sender-token'
+          rawData: JSON.stringify(devices: '*')
+
+        @sut.do request, (error, @response) => done error
 
       it 'should respond with a 204', ->
         expect(@response.metadata.code).to.equal 204
 
-      it 'should put an additional message in the queue for event logging', (done) ->
-        @cache.lindex 'meshblu-messages', 0, (error, message) =>
-          return done error if error?
-          expect(message).to.deep.equal JSON.stringify({
+      describe 'JobManager gets DeliverSentMessage job', (done) ->
+        beforeEach (done) ->
+          @jobManager.getRequest ['request'], (error, @request) =>
+            done error
+
+        it 'should be a valid DeliverSentMessage job', ->
+          message =
+            devices: ['*']
+            fromUuid: 'sender-uuid'
+
+          auth =
+            uuid: 'sender-uuid'
+            token: 'sender-token'
+
+          {rawData, metadata} = @request
+          expect(metadata.auth).to.deep.equal auth
+          expect(metadata.jobType).to.equal 'DeliverSentMessage'
+          expect(metadata.fromUuid).to.equal 'sender-uuid'
+          expect(rawData).to.equal JSON.stringify message
+
+        describe 'JobManager gets DeliverBroadcastMessage job', (done) ->
+          beforeEach (done) ->
+            @jobManager.getRequest ['request'], (error, @request) =>
+              done error
+
+          it 'should be a valid DeliverBroadcastMessage job', ->
+            message =
+              devices: ['*']
+              fromUuid: 'sender-uuid'
+
+            auth =
+              uuid: 'sender-uuid'
+              token: 'sender-token'
+
+            {rawData, metadata} = @request
+            expect(metadata.auth).to.deep.equal auth
+            expect(metadata.jobType).to.equal 'DeliverBroadcastMessage'
+            expect(metadata.fromUuid).to.equal 'sender-uuid'
+            expect(rawData).to.equal JSON.stringify message
+
+    describe 'when devices is multiple uuids', ->
+      beforeEach (done) ->
+        request =
+          metadata:
+            responseId: 'response-uuid'
             auth:
-              uuid:  'meshblu-uuid'
-              token: 'meshblu-token'
-            message:
-              devices: ['forwarder-uuid']
-              topic:    'message'
-              payload:
-                request:  {cats: true}
-                fromUuid: 'sender-uuid'
-          })
-          done()
+              uuid:  'sender-uuid'
+              token: 'sender-token'
+            fromUuid: 'impersonated-uuid'
+          rawData: JSON.stringify(devices: ['receiver-uuid', 'another-receiver-uuid'])
+
+        @sut.do request, (error, @response) => done error
+
+      it 'should respond with a 204', ->
+        expect(@response.metadata.code).to.equal 204
+
+      describe 'JobManager gets DeliverSentMessage job', (done) ->
+        beforeEach (done) ->
+          @jobManager.getRequest ['request'], (error, @request) =>
+            done error
+
+        it 'should be a valid DeliverSentMessage job', ->
+          message =
+            devices: ['receiver-uuid', 'another-receiver-uuid']
+            fromUuid: 'impersonated-uuid'
+
+          auth =
+            uuid: 'sender-uuid'
+            token: 'sender-token'
+
+          {rawData, metadata} = @request
+          expect(metadata.auth).to.deep.equal auth
+          expect(metadata.jobType).to.equal 'DeliverSentMessage'
+          expect(metadata.fromUuid).to.equal 'impersonated-uuid'
+          expect(rawData).to.equal JSON.stringify message
+
+        describe 'JobManager gets DeliverReceivedMessage job for receiver-uuid', (done) ->
+          beforeEach (done) ->
+            @jobManager.getRequest ['request'], (error, @request) =>
+              done error
+
+          it 'should be a valid DeliverReceivedMessage job', ->
+            message =
+              devices: ['receiver-uuid', 'another-receiver-uuid']
+              fromUuid: 'impersonated-uuid'
+
+            auth =
+              uuid: 'sender-uuid'
+              token: 'sender-token'
+
+            {rawData, metadata} = @request
+            expect(metadata.auth).to.deep.equal auth
+            expect(metadata.jobType).to.equal 'DeliverReceivedMessage'
+            expect(metadata.toUuid).to.equal 'receiver-uuid'
+            expect(metadata.fromUuid).to.equal 'impersonated-uuid'
+            expect(rawData).to.equal JSON.stringify message
+
+          describe 'JobManager gets DeliverReceivedMessage job for another-receiver-uuid', (done) ->
+            beforeEach (done) ->
+              @jobManager.getRequest ['request'], (error, @request) =>
+                done error
+
+            it 'should be a valid DeliverReceivedMessage job', ->
+              message =
+                devices: ['receiver-uuid', 'another-receiver-uuid']
+                fromUuid: 'impersonated-uuid'
+
+              auth =
+                uuid: 'sender-uuid'
+                token: 'sender-token'
+
+              {rawData, metadata} = @request
+              expect(metadata.auth).to.deep.equal auth
+              expect(metadata.jobType).to.equal 'DeliverReceivedMessage'
+              expect(metadata.toUuid).to.equal 'another-receiver-uuid'
+              expect(metadata.fromUuid).to.equal 'impersonated-uuid'
+              expect(rawData).to.equal JSON.stringify message

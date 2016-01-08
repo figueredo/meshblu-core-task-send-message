@@ -1,35 +1,67 @@
 _ = require 'lodash'
+http = require 'http'
+async = require 'async'
+uuid = require 'uuid'
 
 class SendMessage
-  constructor: ({@cache,@meshbluConfig,@forwardEventDevices}) ->
+  constructor: ({@cache,@datastore,@meshbluConfig,@jobManager}) ->
 
   do: (job, callback) =>
-    message =
-      auth: job.metadata.auth
-      message: JSON.parse(job.rawData)
+    {auth, fromUuid, responseId} = job.metadata
+    fromUuid ?= auth.uuid
+    try
+      message = JSON.parse job.rawData
+    catch
 
-    @cache.lpush 'meshblu-messages', JSON.stringify(message), (error, result) =>
-      return callback error if error?
-      return callback null, metadata: code: 404 unless result?
+    @_send {auth, fromUuid, message}, (error) =>
+      return @_sendResponse responseId, error.code, callback if error?
+      @_sendResponse responseId, 204, callback
 
-      data =
-        request: message.message
-        fromUuid: message.auth.uuid
+  _createJob: ({jobType, messageType, toUuid, message, fromUuid, auth}, callback) =>
+    request =
+      data: message
+      metadata:
+        auth: auth
+        toUuid: toUuid
+        fromUuid: fromUuid
+        jobType: jobType
+        messageType: messageType
+        responseId: uuid.v4()
 
-      @logEvent {data}, (error) =>
-        return callback null, metadata: {code: 204}
+    @jobManager.createRequest 'request', request, callback
 
-  logEvent: ({data}, callback) =>
-    return callback() if _.isEmpty @forwardEventDevices
-    {uuid, token} = @meshbluConfig
+  _isBroadcast: (message) =>
+    _.contains message.devices, '*'
 
-    message =
-      auth: {uuid, token}
-      message:
-        devices: @forwardEventDevices
-        topic:   'message'
-        payload: data
+  _send: ({fromUuid, message, auth}, callback) =>
+    if !message or _.isEmpty message.devices
+      error = new Error 'Invalid Message Format'
+      error.code = 422
+      return callback error
 
-    @cache.lpush 'meshblu-messages', JSON.stringify(message), callback
+    message.fromUuid = fromUuid
+
+    if _.isString message.devices
+      message.devices = [ message.devices ]
+
+    tasks = [
+      async.apply @_createJob, {jobType: 'DeliverSentMessage', fromUuid, message, auth}
+    ]
+
+    if @_isBroadcast message
+      tasks.push async.apply @_createJob, {jobType: 'DeliverBroadcastMessage', fromUuid, message, auth}
+
+    devices = _.without message.devices, '*'
+    _.each devices, (toUuid) =>
+      tasks.push async.apply @_createJob, {jobType: 'DeliverReceivedMessage', toUuid, fromUuid, message, auth}
+
+    async.series tasks, callback
+
+  _sendResponse: (responseId, code, callback) =>
+    callback null,
+      metadata:
+        responseId: responseId
+        code: code
+        status: http.STATUS_CODES[code]
 
 module.exports = SendMessage

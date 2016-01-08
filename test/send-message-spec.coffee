@@ -64,12 +64,12 @@ describe 'SendMessage', ->
       it 'should respond with a 204', ->
         expect(@response.metadata.code).to.equal 204
 
-      describe 'JobManager gets DeliverSentMessage job', (done) ->
+      describe 'JobManager gets DeliverMessage job', (done) ->
         beforeEach (done) ->
           @jobManager.getRequest ['request'], (error, @request) =>
             done error
 
-        it 'should be a valid DeliverSentMessage job', ->
+        it 'should be a sent messageType', ->
           message =
             devices: ['*']
             fromUuid: 'sender-uuid'
@@ -80,16 +80,18 @@ describe 'SendMessage', ->
 
           {rawData, metadata} = @request
           expect(metadata.auth).to.deep.equal auth
-          expect(metadata.jobType).to.equal 'DeliverSentMessage'
+          expect(metadata.jobType).to.equal 'DeliverMessage'
           expect(metadata.fromUuid).to.equal 'sender-uuid'
+          expect(metadata.messageType).to.equal 'sent'
+          expect(metadata.toUuid).to.equal 'sender-uuid'
           expect(rawData).to.equal JSON.stringify message
 
-        describe 'JobManager gets DeliverBroadcastMessage job', (done) ->
+        describe 'JobManager gets DeliverMessage job', (done) ->
           beforeEach (done) ->
             @jobManager.getRequest ['request'], (error, @request) =>
               done error
 
-          it 'should be a valid DeliverBroadcastMessage job', ->
+          it 'should be a broadcast messageType', ->
             message =
               devices: ['*']
               fromUuid: 'sender-uuid'
@@ -100,8 +102,10 @@ describe 'SendMessage', ->
 
             {rawData, metadata} = @request
             expect(metadata.auth).to.deep.equal auth
-            expect(metadata.jobType).to.equal 'DeliverBroadcastMessage'
+            expect(metadata.jobType).to.equal 'DeliverMessage'
             expect(metadata.fromUuid).to.equal 'sender-uuid'
+            expect(metadata.messageType).to.equal 'broadcast'
+            expect(metadata.toUuid).to.equal 'sender-uuid'
             expect(rawData).to.equal JSON.stringify message
 
     describe 'when devices is multiple uuids', ->
@@ -120,12 +124,12 @@ describe 'SendMessage', ->
       it 'should respond with a 204', ->
         expect(@response.metadata.code).to.equal 204
 
-      describe 'JobManager gets DeliverSentMessage job', (done) ->
+      describe 'JobManager gets DeliverMessage job', (done) ->
         beforeEach (done) ->
           @jobManager.getRequest ['request'], (error, @request) =>
             done error
 
-        it 'should be a valid DeliverSentMessage job', ->
+        it 'should be a sent messageType', ->
           message =
             devices: ['receiver-uuid', 'another-receiver-uuid']
             fromUuid: 'impersonated-uuid'
@@ -136,16 +140,18 @@ describe 'SendMessage', ->
 
           {rawData, metadata} = @request
           expect(metadata.auth).to.deep.equal auth
-          expect(metadata.jobType).to.equal 'DeliverSentMessage'
+          expect(metadata.jobType).to.equal 'DeliverMessage'
+          expect(metadata.messageType).to.equal 'sent'
+          expect(metadata.toUuid).to.equal 'impersonated-uuid'
           expect(metadata.fromUuid).to.equal 'impersonated-uuid'
           expect(rawData).to.equal JSON.stringify message
 
-        describe 'JobManager gets DeliverReceivedMessage job for receiver-uuid', (done) ->
+        describe 'JobManager gets DeliverMessage job for receiver-uuid', (done) ->
           beforeEach (done) ->
             @jobManager.getRequest ['request'], (error, @request) =>
               done error
 
-          it 'should be a valid DeliverReceivedMessage job', ->
+          it 'should be a received messageType', ->
             message =
               devices: ['receiver-uuid', 'another-receiver-uuid']
               fromUuid: 'impersonated-uuid'
@@ -156,17 +162,18 @@ describe 'SendMessage', ->
 
             {rawData, metadata} = @request
             expect(metadata.auth).to.deep.equal auth
-            expect(metadata.jobType).to.equal 'DeliverReceivedMessage'
+            expect(metadata.jobType).to.equal 'DeliverMessage'
+            expect(metadata.messageType).to.equal 'received'
             expect(metadata.toUuid).to.equal 'receiver-uuid'
             expect(metadata.fromUuid).to.equal 'impersonated-uuid'
             expect(rawData).to.equal JSON.stringify message
 
-          describe 'JobManager gets DeliverReceivedMessage job for another-receiver-uuid', (done) ->
+          describe 'JobManager gets DeliverMessage job for another-receiver-uuid', (done) ->
             beforeEach (done) ->
               @jobManager.getRequest ['request'], (error, @request) =>
                 done error
 
-            it 'should be a valid DeliverReceivedMessage job', ->
+            it 'should be a received messageType', ->
               message =
                 devices: ['receiver-uuid', 'another-receiver-uuid']
                 fromUuid: 'impersonated-uuid'
@@ -177,7 +184,8 @@ describe 'SendMessage', ->
 
               {rawData, metadata} = @request
               expect(metadata.auth).to.deep.equal auth
-              expect(metadata.jobType).to.equal 'DeliverReceivedMessage'
+              expect(metadata.jobType).to.equal 'DeliverMessage'
+              expect(metadata.messageType).to.equal 'received'
               expect(metadata.toUuid).to.equal 'another-receiver-uuid'
               expect(metadata.fromUuid).to.equal 'impersonated-uuid'
               expect(rawData).to.equal JSON.stringify message

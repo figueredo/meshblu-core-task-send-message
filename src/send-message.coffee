@@ -17,14 +17,14 @@ class SendMessage
       return @_sendResponse responseId, error.code, callback if error?
       @_sendResponse responseId, 204, callback
 
-  _createJob: ({jobType, messageType, toUuid, message, fromUuid, auth}, callback) =>
+  _createJob: ({messageType, toUuid, message, fromUuid, auth}, callback) =>
     request =
       data: message
       metadata:
         auth: auth
         toUuid: toUuid
         fromUuid: fromUuid
-        jobType: jobType
+        jobType: 'DeliverMessage'
         messageType: messageType
         responseId: uuid.v4()
 
@@ -45,15 +45,15 @@ class SendMessage
       message.devices = [ message.devices ]
 
     tasks = [
-      async.apply @_createJob, {jobType: 'DeliverSentMessage', fromUuid, message, auth}
+      async.apply @_createJob, {messageType: 'sent', toUuid: fromUuid, fromUuid, message, auth}
     ]
 
     if @_isBroadcast message
-      tasks.push async.apply @_createJob, {jobType: 'DeliverBroadcastMessage', fromUuid, message, auth}
+      tasks.push async.apply @_createJob, {messageType: 'broadcast', toUuid: fromUuid, fromUuid, message, auth}
 
     devices = _.without message.devices, '*'
     _.each devices, (toUuid) =>
-      tasks.push async.apply @_createJob, {jobType: 'DeliverReceivedMessage', toUuid, fromUuid, message, auth}
+      tasks.push async.apply @_createJob, {messageType: 'received', toUuid, fromUuid, message, auth}
 
     async.series tasks, callback
 

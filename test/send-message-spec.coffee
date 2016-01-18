@@ -64,7 +64,7 @@ describe 'SendMessage', ->
       it 'should respond with a 204', ->
         expect(@response.metadata.code).to.equal 204
 
-      describe 'JobManager gets DeliverMessage job', (done) ->
+      describe 'JobManager gets DeliverSentMessage job', (done) ->
         beforeEach (done) ->
           @jobManager.getRequest ['request'], (error, @request) =>
             done error
@@ -80,13 +80,13 @@ describe 'SendMessage', ->
 
           {rawData, metadata} = @request
           expect(metadata.auth).to.deep.equal auth
-          expect(metadata.jobType).to.equal 'DeliverMessage'
+          expect(metadata.jobType).to.equal 'DeliverSentMessage'
           expect(metadata.fromUuid).to.equal 'sender-uuid'
           expect(metadata.messageType).to.equal 'sent'
           expect(metadata.toUuid).to.equal 'sender-uuid'
           expect(rawData).to.equal JSON.stringify message
 
-        describe 'JobManager gets DeliverMessage job', (done) ->
+        describe 'JobManager gets DeliverBroadcastMessage job', (done) ->
           beforeEach (done) ->
             @jobManager.getRequest ['request'], (error, @request) =>
               done error
@@ -102,7 +102,7 @@ describe 'SendMessage', ->
 
             {rawData, metadata} = @request
             expect(metadata.auth).to.deep.equal auth
-            expect(metadata.jobType).to.equal 'DeliverMessage'
+            expect(metadata.jobType).to.equal 'DeliverBroadcastMessage'
             expect(metadata.fromUuid).to.equal 'sender-uuid'
             expect(metadata.messageType).to.equal 'broadcast'
             expect(metadata.toUuid).to.equal 'sender-uuid'
@@ -124,7 +124,7 @@ describe 'SendMessage', ->
       it 'should respond with a 204', ->
         expect(@response.metadata.code).to.equal 204
 
-      describe 'JobManager gets DeliverMessage job', (done) ->
+      describe 'JobManager gets DeliverSentMessage job', (done) ->
         beforeEach (done) ->
           @jobManager.getRequest ['request'], (error, @request) =>
             done error
@@ -140,7 +140,7 @@ describe 'SendMessage', ->
 
           {rawData, metadata} = @request
           expect(metadata.auth).to.deep.equal auth
-          expect(metadata.jobType).to.equal 'DeliverMessage'
+          expect(metadata.jobType).to.equal 'DeliverSentMessage'
           expect(metadata.messageType).to.equal 'sent'
           expect(metadata.toUuid).to.equal 'impersonated-uuid'
           expect(metadata.fromUuid).to.equal 'impersonated-uuid'
@@ -162,13 +162,13 @@ describe 'SendMessage', ->
 
             {rawData, metadata} = @request
             expect(metadata.auth).to.deep.equal auth
-            expect(metadata.jobType).to.equal 'DeliverMessage'
+            expect(metadata.jobType).to.equal 'DeliverReceivedMessage'
             expect(metadata.messageType).to.equal 'received'
             expect(metadata.toUuid).to.equal 'receiver-uuid'
             expect(metadata.fromUuid).to.equal 'impersonated-uuid'
             expect(rawData).to.equal JSON.stringify message
 
-          describe 'JobManager gets DeliverMessage job for another-receiver-uuid', (done) ->
+          describe 'JobManager gets DeliverReceivedMessage job for another-receiver-uuid', (done) ->
             beforeEach (done) ->
               @jobManager.getRequest ['request'], (error, @request) =>
                 done error
@@ -184,7 +184,7 @@ describe 'SendMessage', ->
 
               {rawData, metadata} = @request
               expect(metadata.auth).to.deep.equal auth
-              expect(metadata.jobType).to.equal 'DeliverMessage'
+              expect(metadata.jobType).to.equal 'DeliverReceivedMessage'
               expect(metadata.messageType).to.equal 'received'
               expect(metadata.toUuid).to.equal 'another-receiver-uuid'
               expect(metadata.fromUuid).to.equal 'impersonated-uuid'

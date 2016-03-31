@@ -46,14 +46,35 @@ class SendMessage
 
     tasks = []
 
-    tasks.push async.apply @_createJob, {messageType: 'sent', jobType: 'DeliverSentMessage', toUuid: fromUuid, fromUuid, message, auth}
+    tasks.push async.apply @_createJob, {
+      messageType: 'sent'
+      jobType: 'DeliverSentMessage'
+      toUuid: fromUuid
+      fromUuid: fromUuid
+      message: message
+      auth: auth
+    }
 
     if @_isBroadcast message
-      tasks.push async.apply @_createJob, {messageType: 'broadcast', jobType: 'DeliverBroadcastMessage', toUuid: fromUuid, fromUuid, message, auth}
+      tasks.push async.apply @_createJob, {
+        messageType: 'broadcast'
+        jobType: 'DeliverBroadcastMessage'
+        toUuid: fromUuid
+        fromUuid: fromUuid
+        message: message
+        auth: auth
+      }
 
     devices = _.without message.devices, '*'
     _.each devices, (toUuid) =>
-      tasks.push async.apply @_createJob, {messageType: 'received', jobType: 'DeliverReceivedMessage', toUuid, fromUuid, message, auth}
+      tasks.push async.apply @_createJob, {
+        messageType: 'received'
+        jobType: 'DeliverReceivedMessage'
+        toUuid: toUuid
+        fromUuid: fromUuid
+        message: message
+        auth: auth
+      }
 
     async.series tasks, callback
 

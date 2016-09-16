@@ -9,3 +9,7 @@ Put a Meshblu Message into the message queue
 
 [![NPM](https://nodei.co/npm/meshblu-core-task-send-message.svg?style=flat)](https://npmjs.org/package/meshblu-core-task-send-message)
 
+[![Dependency status](http://img.shields.io/david/octoblu/meshblu-core-task-send-message.svg?style=flat)](https://david-dm.org/octoblu/meshblu-core-task-send-message)
+
+[![NPM](https://nodei.co/npm/meshblu-core-task-send-message.svg?style=flat)](https://npmjs.org/package/meshblu-core-task-send-message)
+

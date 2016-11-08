@@ -8,7 +8,7 @@ class SendMessage
 
   do: (job, callback) =>
     {auth, fromUuid, responseId} = job.metadata
-    fromUuid ?= auth.uuid
+    fromUuid ?= auth.as ? auth.uuid
     try
       message = JSON.parse job.rawData
     catch

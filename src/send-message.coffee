@@ -76,7 +76,7 @@ class SendMessage
         auth: auth
       }
 
-    async.parallel tasks, callback
+    async.parallelLimit tasks, 100, callback
 
   _sendResponse: (responseId, code, callback) =>
     callback null,
